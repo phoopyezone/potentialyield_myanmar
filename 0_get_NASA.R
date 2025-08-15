@@ -8,6 +8,7 @@ if (this == "LAPTOP-IVSPBGCA") {
 }
 
 dir.create(path, FALSE, TRUE)
+setwd(path)
 outpath <- "data/raw/NASA"
 dir.create(outpath, FALSE, TRUE)
 
@@ -19,8 +20,8 @@ dir.create(outpath, FALSE, TRUE)
 get_NASA <- function(year, parameter, e, path) {
 	ee <- paste(as.vector(e), collapse="x")
 	f <- file.path(path, paste0(parameter, "-", year, "-", ee, ".nc"))
-	print(f); flush.console()
 	if (!file.exists(f)) {
+	print(f); flush.console()
 		request <- paste0("https://power.larc.nasa.gov/api/temporal/daily/regional?latitude-min=", e$ymin, "&latitude-max=", e$ymax, "&longitude-min=", e$xmin, "&longitude-max=", e$xmax, "&parameters=PPPP&community=SB&start=YYYY0101&end=YYYY1231&format=NetCDF")
 		url <- gsub("YYYY", year, request)
 		url <- gsub("PPPP", parameter, url)
@@ -31,7 +32,7 @@ get_NASA <- function(year, parameter, e, path) {
 	f
 }
 
-vars <- c("ALLSKY_SFC_SW_DWN", "T2M_MIN", "T2M_MAX", "WS2M", "T2MDEW", "PRECTOTCORR_SUM")
+vars <- c("ALLSKY_SFC_SW_DWN", "T2M_MIN", "T2M_MAX", "WS2M", "T2MDEW", "PRECTOTCORR")
 for (var in vars) {
 	for (year in 1995:2024) {
 		fnc1 <- get_NASA(year, var, terra::ext(92, 102, 8, 18), outpath)
@@ -41,7 +42,6 @@ for (var in vars) {
 }
 
 
-var <- "T2M_MIN"
 outpath2 <- "data/intermediate/NASA"
 dir.create(outpath2, F, T)
 
@@ -51,9 +51,21 @@ for (var in vars) {
 		fy <- grep(year, ff, value=TRUE)
 		merge(sprc(lapply(fy, rast)))
 	}) |> rast()
-	writeCDF(r, file.path(outpath2, paste0(var, ".nc")), overwrite=TRUE) 
+	terra::writeCDF(r, file.path(outpath2, paste0(var, ".nc")), overwrite=TRUE) 
 }
 	
+
+# resample radiation 
+tmp <- terra::rast(file.path(outpath2, "T2M_MIN.nc"))
+rad <- terra::rast(file.path(outpath2, "ALLSKY_SFC_SW_DWN.nc"))
+rrad <- terra::resample(rad, tmp)
+terra::writeCDF(rrad, file.path(outpath2, "radiation.nc"))
+
+# vapor pressure
+dew <- terra::rast(file.path(outpath2, "T2MDEW.nc"))
+vap <- 6.112 * exp((17.67 * dew) / (dew + 243.5))
+terra::writeCDF(vap, file.path(outpath2, "vapr.nc"))
+
 
 
 #r1 <- rast(fnc1)
