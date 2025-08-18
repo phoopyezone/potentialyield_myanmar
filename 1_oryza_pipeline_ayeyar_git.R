@@ -87,11 +87,9 @@ nasa_vap <- nasa_dew[, .(LON, LAT, YEAR, DOY, VAP = vap)]
 nasa_tmin <- data.table::fread(file.path(nasa_dir, "nasa_temp_min.csv"))[, .(LON, LAT, YEAR, DOY, TMIN = T2M_MIN)]
 nasa_tmax <- data.table::fread(file.path(nasa_dir, "nasa_temp_max.csv"))[, .(LON, LAT, YEAR, DOY, TMAX = T2M_MAX)]
 
-# Wind speed at 10m height (m/s) - check if ORYZA needs 2m conversion
-nasa_wind <- data.table::fread(file.path(nasa_dir, "nasa_wind_speed.csv"))[, .(LON, LAT, YEAR, DOY, WIND10 = WS10M)]
-
-## Use 10m wind speeds (no conversion to 2m)
+## Use 10m wind speeds (and conversion to 2m)
 nasa_wind <- data.table::fread(file.path(nasa_dir, "nasa_wind_speed.csv"))[, .(LON, LAT, YEAR, DOY, WIND = WS10M)]
+nasa_wind$WIND <- nasa_wind$WIND * 0.78
 
 ## Merge all NASA variables by coordinates and date
 nasa_all <- Reduce(function(x, y) merge(x, y, by = c("LON", "LAT", "YEAR", "DOY"), all = TRUE),
@@ -130,8 +128,8 @@ chirps_raw[, DOY  := lubridate::yday(date)]
 ## Filter to Ayeyarwady bounding box (with 1° buffer)
 lon_range <- range(sf::st_coordinates(ayeyar_region)[,1])
 lat_range <- range(sf::st_coordinates(ayeyar_region)[,2])
-chirps_clip <- chirps_raw[between(lon, lon_range[1] - 1, lon_range[2] + 1) &
-                            between(lat, lat_range[1] - 1, lat_range[2] + 1)]
+chirps_clip <- chirps_raw[dplyr::between(lon, lon_range[1] - 1, lon_range[2] + 1) &
+                            dplyr::between(lat, lat_range[1] - 1, lat_range[2] + 1)]
 
 #chirps_clip <- chirps_raw[(lon >= lon_range[1] - 1) & (lon <= lon_range[2] + 1) &
 #                            (lat >= lat_range[1] - 1) & (lat <= lat_range[2] + 1)]
@@ -166,6 +164,8 @@ weather_full$RAIN[is.na(weather_full$RAIN)] <- 0
 weather_full <- weather_full |>
   dplyr::mutate(STN = as.integer(factor(grid_id, levels = sort(unique(grid_id))))) |>
   dplyr::select(STN, YEAR, DAY = DOY, SRAD, TMIN, TMAX, VAP, WIND, RAIN, lon, lat)
+
+
 
 ## Create output directory and write files
 out_dir <- "data_myanmar/ayeyar_only/oryza_ready_files"
