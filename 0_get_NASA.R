@@ -1,4 +1,6 @@
 
+# using geodata 0.6-4
+# remotes::install_github("rspatial/geodata")
 
 this <- system('hostname', TRUE)
 if (this == "LAPTOP-IVSPBGCA") {
@@ -9,66 +11,63 @@ if (this == "LAPTOP-IVSPBGCA") {
 
 dir.create(path, FALSE, TRUE)
 setwd(path)
-outpath <- "data/raw/NASA"
+outpath <- "data/raw/"
 dir.create(outpath, FALSE, TRUE)
 
-
-#https://power.larc.nasa.gov/api/temporal/daily/regional?latitude-min=8&latitude-max=18&longitude-min=92&longitude-max=102&parameters=T2M_MIN&community=SB&start=20000101&end=20001231&format=NetCDF
-
-#T2M_MIN,T2M_MAX, WS2M,T2MDEW,PRECTOTCORR_SUM
-
-get_NASA <- function(year, parameter, e, path) {
-	ee <- paste(as.vector(e), collapse="x")
-	f <- file.path(path, paste0(parameter, "-", year, "-", ee, ".nc"))
-	if (!file.exists(f)) {
-	print(f); flush.console()
-		request <- paste0("https://power.larc.nasa.gov/api/temporal/daily/regional?latitude-min=", e$ymin, "&latitude-max=", e$ymax, "&longitude-min=", e$xmin, "&longitude-max=", e$xmax, "&parameters=PPPP&community=SB&start=YYYY0101&end=YYYY1231&format=NetCDF")
-		url <- gsub("YYYY", year, request)
-		url <- gsub("PPPP", parameter, url)
-		g <- httr::GET(url)
-		content <- httr::content(g, "raw")	
-		writeBin(content, f)
-	}
-	f
-}
-
 vars <- c("ALLSKY_SFC_SW_DWN", "T2M_MIN", "T2M_MAX", "WS2M", "T2MDEW", "PRECTOTCORR")
-for (var in vars) {
-	for (year in 1995:2024) {
-		fnc1 <- get_NASA(year, var, terra::ext(92, 102, 8, 18), outpath)
-		fnc2 <- get_NASA(year, var, terra::ext(92, 102, 18, 28), outpath)
-		fnc3 <- get_NASA(year, var, terra::ext(92, 102, 28, 30), outpath)
-	}
-}
-
-
-outpath2 <- "data/intermediate/NASA"
-dir.create(outpath2, F, T)
+years <- 1995:2024
+ext <- terra::ext(91.5, 101.5,  8, 29)
 
 for (var in vars) {
-	ff <- list.files(outpath, var, full=TRUE)
-	r <- lapply(1995:2024, \(year) {
-		fy <- grep(year, ff, value=TRUE)
-		merge(sprc(lapply(fy, rast)))
-	}) |> rast()
-	terra::writeCDF(r, file.path(outpath2, paste0(var, ".nc")), overwrite=TRUE) 
+	geodata:::powerWeather(years, var, ext, outpath)
 }
-	
 
+outpath <- "data/raw/weather/power"
 # resample radiation 
-tmp <- terra::rast(file.path(outpath2, "T2M_MIN.nc"))
-rad <- terra::rast(file.path(outpath2, "ALLSKY_SFC_SW_DWN.nc"))
+tmp <- terra::rast(file.path(outpath, "T2M_MIN-1995_2024-91.5x101.5x8x29.nc"))
+rad <- terra::rast(file.path(outpath, "ALLSKY_SFC_SW_DWN-1995_2024-91.5x101.5x8x29.nc"))
 rrad <- terra::resample(rad, tmp)
-terra::writeCDF(rrad, file.path(outpath2, "radiation.nc"))
+terra::writeCDF(rrad, file.path(outpath, "weather/power/radiation-1995_2024-91.5x101.5x8x29.nc"), overwrite=TRUE)
 
 # vapor pressure
-dew <- terra::rast(file.path(outpath2, "T2MDEW.nc"))
+dew <- terra::rast(file.path(outpath, "T2MDEW-1995_2024-91.5x101.5x8x29.nc"))
 vap <- 6.112 * exp((17.67 * dew) / (dew + 243.5))
-terra::writeCDF(vap, file.path(outpath2, "vapr.nc"))
+terra::writeCDF(vap, file.path(outpath, "weather/power/vapr-1995_2024-91.5x101.5x8x29.nc"), varname="VAPR", longname="vapor pressure", overwrite=TRUE)
+
+
+rain <- terra::rast(file.path(outpath, "weather/power/PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc")) * 86400
+terra::writeCDF(rain, file.path(outpath, "weather/power/rain-1995_2024-91.5x101.5x8x29.nc"), varname="RAIN", longname="precipitation", unit="mm", overwrite=TRUE)
+
+### elevation 
+elv <- geodata::elevation_30s("Myanmar", path="data/raw")
+elv <- terra::resample(elv, dew, "average", filename="data/raw/elevation.tif")
 
 
 
-#r1 <- rast(fnc1)
-#r2 <- rast(fnc2)
-#r3 <- rast(fnc3)
-#m = merge(r1, r2, r3)
+### soil
+ext <- terra::ext(91.5, 101.5,  8, 29)
+vars <- c("bdod", "clay", "nitrogen", "phh2o", "sand", "silt", "soc")
+depths <- c(5, 15, 30)
+soil <- geodata::soil_world(vars, depths, stat="mean", vsi=TRUE)
+soil <- terra::crop(soil, ext, filename="data/raw/soil.tif")
+
+soil <- terra::rast("data/raw/soil.tif")
+soil2 <- terra::resample(soil, elv, "average", filename="data/raw/soil_agg.tif")
+
+
+## cells
+aoi <- geodata::gadm("Myanmar", level=1, path="data/raw")
+r <- rast(elv)
+r <- mask(init(r, "cell"), aoi, touches=TRUE)
+rice_rast <- geodata::crop_spam(crop="rice", var="area", "data/raw") |> terra::crop(aoi, mask=TRUE)
+rice_rast <- resample(rice_rast[[1]], r, "sum") > 0
+r <- mask(r, rice_rast, maskvalue=FALSE)
+cells <- data.frame(r)[,1]
+
+xy <- data.frame(xyFromCell(r, cells))
+relv <- rast("data/raw/elevation.tif")
+xy$elevation <- round(relv[cells])
+xy$cell <- cells
+
+saveRDS(xy, "data/cells.rds")
+
