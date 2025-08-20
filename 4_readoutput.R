@@ -45,7 +45,9 @@ extract_yields <- function(file_path = "C:/1_Research/simulation_main/res.dat",
     df$Run_ID <- run_id
     
     # Convert to numeric
-    for(col in c("YEAR", "DOY", "WRR14", "WAGT", "LAI")) {
+    numeric_cols <- c("TIME", "YEAR", "DOY", "WRR14", "WAGT", "WSO", "WST", 
+                      "LAI","TMIN", "TMAX", "RAIN")
+    for(col in numeric_cols) {
       if(col %in% names(df)) {
         df[[col]] <- as.numeric(df[[col]])
       }
@@ -57,12 +59,18 @@ extract_yields <- function(file_path = "C:/1_Research/simulation_main/res.dat",
   # Combine and get final yields
   combined <- bind_rows(all_data)
   yields <- combined %>%
-    filter(!is.na(WRR14), WRR14 > 0, !is.na(YEAR)) %>%
+    filter(!is.na(WRR14), WRR14 > 0, !is.na(YEAR), !is.na(WSO)) %>%
     group_by(Run_ID, YEAR) %>%
     summarise(
       Yield_kg_ha = max(WRR14, na.rm = TRUE),
-      Biomass_kg_ha = max(WAGT, na.rm = TRUE),
+      Total_Biomass_kg_ha = max(WAGT, na.rm = TRUE),
+      Storage_Organ_kg_ha = max(WSO, na.rm = TRUE),
+      Stem_kg_ha = max(WST, na.rm = TRUE),
       Max_LAI = max(LAI, na.rm = TRUE),
+      Mean_Tmin = mean(TMIN, na.rm = TRUE),
+      Mean_Tmax = mean(TMAX, na.rm = TRUE),
+      Total_Rain = sum(RAIN, na.rm = TRUE),
+      Harvest_DOY = DOY[which.max(WRR14)],
       .groups = 'drop'
     )
   
