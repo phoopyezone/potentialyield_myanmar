@@ -101,12 +101,12 @@ for (var in soil_vars) {
     vals <- terra::extract(rast_crop, terra::vect(grid_rice), fun = mean, na.rm = TRUE)
     col_name <- paste0(var, "_", depth)
     
-    ## Apply SoilGrids unit conversions
+    ## Apply SoilGrids unit conversions. SON and SOC units : kg C/ha / kg N/ha
     conv <- 1
     if (var == "bdod") conv <- 1 / 100    # cg/cm3 → g/cm3 (kg/dm3)
-    if (var %in% c("clay", "sand", "silt")) conv <- 1 / 10   # g/kg → %
-    if (var == "nitrogen") conv <- 1 / 100  # cg/kg → g/kg (approx)
-    if (var == "soc") conv <- 1 / 100       # dg/kg → %
+    if (var %in% c("clay", "sand", "silt")) conv <- 1 / 1000   # g/kg → %
+    if (var == "nitrogen") conv <- 1 / 100  # not correct : cg/kg → g/kg (approx)
+    if (var == "soc") conv <- 1 / 10       # not correct : dg/kg → %
     if (var == "phh2o") conv <- 1 / 10      # pH*10 → pH
     
     soil_df[[col_name]] <- vals[, 2] * conv
