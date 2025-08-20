@@ -59,7 +59,7 @@ replace_soil_properties <- function(template_lines, nl, tkl, clay, sand, bd, ph)
 }
 
 ## Write complete soil file (.sol) for one station
-write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0.15, 0.30, 0.40, 1.00)) {
+write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0.15, 0.30, 0.40, 1.00), outpath) {
   # Define 6 soil layers with cumulative depths: 5, 15, 30, 60, 100, 200cm
   nl <- length(tkl)
     # Layer thickness (m)
@@ -67,18 +67,14 @@ write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0
   ## Extract and convert soil properties to ORYZA units
   # Clay/sand: % to fraction (divide by 100 - but data already in %, so divide by 1000 from g/kg)
   depths <- c("0-5cm","5-15cm","15-30cm","30-60cm","60-100cm","100-200cm")[1:nl]
-  clay_vals <- as.numeric(soil_row[paste0("clay_", depths)]) / 1000
-  sand_vals <- as.numeric(soil_row[paste0("sand_", depths)]) / 1000
+  clay_vals <- soil_row[paste0("clay_", depths)] / 1000
+  sand_vals <- soil_row[paste0("sand_", depths)] / 1000
   
   # Bulk density: cg/cm3 to g/cm3 (divide by 100)
-  bd_vals   <- as.numeric(soil_row[paste0("bdod_", depths)]) / 100
+  bd_vals  <- soil_row[paste0("bdod_", depths)] / 100
   
-  # pH: pH*10 to pH (divide by 10) if available
-  ph_vals   <- NULL
-  if (any(grepl("phh2o_5cm", names(soil_row)))) {
-    ph_vals <- as.numeric(soil_row[paste0("phh2o_", depths)]) / 10
-  }
-  
+  ph_vals  <- soil_row[paste0("phh2o_", depths)]
+
   # Replace template values with site-specific data
   new_lines <- replace_soil_properties(template_lines, nl, tkl, clay_vals, sand_vals, bd_vals, ph_vals)
   
@@ -86,8 +82,8 @@ write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0
   new_lines <- sub("SCODE = '[^']+'", sprintf("SCODE = '%s'", sprintf("GRID_%03d", stn_id)), new_lines)
   
   # Write soil file
-  out_path <- file.path(soil_dir, sprintf("GRID_%03d.sol", stn_id))
-  writeLines(new_lines, out_path)
+  fname <- file.path(outpath, sprintf("GRID_%03d.sol", stn_id))
+  writeLines(new_lines, fname)
 }
 
 
@@ -99,8 +95,11 @@ template_sol_lines <- readLines(template_sol_path)
 cells <- readRDS("data/cells.rds")
 soil <- terra::rast("data/raw/soil_agg.tif")
 
-for (i in 1:nrow(cells) {
+for (i in 1:nrow(cells)) {
 	print(cells$cell[i]); flush.console()
-	x <- extract(soil, cells$cell[i])
-	write_sol_file(cells$cell[i], x, template_sol_lines)
+	x <- terra::extract(soil, cells$cell[i])
+	#repair for now
+	x$`clay_0-5cm` = 100 - (x$`silt_0-5cm` + x$`silt_0-5cm`)
+	write_sol_file(cells$cell[i], x, template_sol_lines, tkl=c(0.05, .1, .15), soil_dir)
 }
+
