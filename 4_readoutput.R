@@ -1,10 +1,22 @@
+
+
+this <- system('hostname', TRUE)
+if (this == "LAPTOP-IVSPBGCA") {
+	path <- "H:/.shortcut-targets-by-id/12UEUrVBpKKmwv8Ub1xsstTrrhZoIn_1A/simulation_data/v2"
+} else {
+	path <- "C:/1_Research/yield_gap/v2"
+}
+setwd(path)
+
+dir.create("data/output", FALSE, FALSE)
+
 library(dplyr)
 library(readr)
 library(stringr)
 
 # Extract ORYZA yields from res.dat file
-extract_yields <- function(file_path = "C:/1_Research/simulation_main/res.dat",
-                           output_path = "C:/1_Research/simulation_main/rice_yields_2015_2024.csv") {
+extract_yields <- function(file_path = "oryza/output/res.dat",
+                           output_path = "data/output/rice_yields_2015_2024.csv") {
   
   lines <- readLines(file_path, warn = FALSE)
   rerun_lines <- grep("OUTPUT FROM RERUN SET:", lines)
