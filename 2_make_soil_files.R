@@ -82,7 +82,7 @@ write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0
   new_lines <- sub("SCODE = '[^']+'", sprintf("SCODE = '%s'", sprintf("GRID_%03d", stn_id)), new_lines)
   
   # Write soil file
-  fname <- file.path(outpath, sprintf("GRID_%03d.sol", stn_id))
+  fname <- file.path(outpath, sprintf("cell_%03d.sol", stn_id))
   writeLines(new_lines, fname)
 }
 
