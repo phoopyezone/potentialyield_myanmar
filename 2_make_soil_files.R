@@ -79,7 +79,7 @@ write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0
   new_lines <- replace_soil_properties(template_lines, nl, tkl, clay_vals, sand_vals, bd_vals, ph_vals)
   
   # Update soil code identifier
-  new_lines <- sub("SCODE = '[^']+'", sprintf("SCODE = '%s'", sprintf("GRID_%03d", stn_id)), new_lines)
+#  new_lines <- sub("SCODE = '[^']+'", sprintf("SCODE = '%s'", sprintf("GRID_%03d", stn_id)), new_lines)
   
   # Write soil file
   fname <- file.path(outpath, sprintf("cell_%03d.sol", stn_id))

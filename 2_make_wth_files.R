@@ -13,13 +13,6 @@ if (this == "LAPTOP-IVSPBGCA") {
 }
 setwd(path)
 
-#library(data.table)  # Fast data processing
-#library(dplyr)       # Data manipulation
-
-## ============================================================================
-## 1. Input and output paths
-## ============================================================================
-
 weather_dir <- file.path(path, "oryza", "weather")  # Output .cli files
 dir.create(weather_dir, FALSE, TRUE)
 
@@ -36,11 +29,10 @@ format_weather_line <- function(stn, year, day, srad, tmin, tmax, vap, wind, rai
 cli_header <- function(stn_id, lon, lat, alt) {
   paste0(c(
     "*-----------------------------------------------------------",
-    sprintf("*  Station Name: GRID_%03d", stn_id),
-    "*  Author      : Automated pipeline", 
-    "*  Source      : ORYZA climate generator",
+    sprintf("*  Station Name: STN%03d", stn_id),
+    "*  Author      : Phoo", 
+    "*  Source      : NASA Power",
     "*",
-    "*  Comments    : Automatically generated weather file",
     sprintf("*  Longitude:  %7.2f E   Latitude:  %6.2f N   Altitude: %.1f m", lon, lat, alt),
     "*",
     "*  Column    Daily Value",
@@ -58,14 +50,10 @@ cli_header <- function(stn_id, lon, lat, alt) {
 }
 
 ## Write complete climate file (.cli) for one station
-write_cli_file <- function(stn_id, wdata, xye, out_path) {
-  lon <- xye$x
-  lat <- xye$y
-  alt <- xye$elevation
-  
+write_cli_file <- function(id, wdata, out_path) {
   # Create file header and coordinate line
-  header <- cli_header(stn_id, lon, lat, alt)
-  coord_line <- sprintf("%.5f,%.5f,%.1f,0.00,0.00", lon, lat, alt)
+  header <- cli_header(id$cell, id$x, id$y, id$elevation)
+  coord_line <- sprintf("%.5f,%.5f,%.1f,0.00,0.00", id$x, id$y, id$elevation)
   
   # Format all daily weather records
   daily_lines <- mapply(format_weather_line,
@@ -81,7 +69,7 @@ write_cli_file <- function(stn_id, wdata, xye, out_path) {
                         USE.NAMES = FALSE)
   
   # Write complete climate file
-  out_path <- file.path(weather_dir, sprintf("STN%d.cli", stn_id))
+  out_path <- file.path(weather_dir, sprintf("STN%d.cli", id$cell))
   writeLines(c(header, coord_line, daily_lines), out_path)
 }
 
@@ -91,23 +79,22 @@ aoi <- geodata::gadm("Myanmar", level=1, path="data/raw")
 
 vars <- c("radiation", "T2M_MIN", "T2M_MAX", "vapr", "WS2M", "rain")
 fnames <- paste0("data/raw/weather/power/", vars, "-1995_2024-91.5x101.5x8x29.nc")
-s <- sds(fnames)
+s <- terra::sds(fnames)
 cells <- readRDS("data/cells.rds")
+
+x <- terra::extract(s, cells$cell)
+x <- lapply(x, t)
 
 
 for (i in 1:nrow(cells)) {
 	print(cells$cell[i]); flush.console()
-	x <- extract(s, cells$cell[i])
-	x <- lapply(x, t)
-	x <- data.frame(do.call(cbind, x))
-	names(x) <- c("SRAD", "TMIN", "TMAX", "VAP", "WIND", "RAIN")
-	dates <- time(s[[1]])
-
-	x$STN = cells$cell[i]
-	x$YEAR=as.integer(format(dates, "%Y"))
-	x$DAY=as.integer(format(dates, "%j"))
-	
-	write_cli_file(cells[i], x, cells[i,], weather_dir)
+	y <- do.call(data.frame, lapply(x, \(v) v[,i]))
+	names(y) <- c("SRAD", "TMIN", "TMAX", "VAP", "WIND", "RAIN")
+	dates <- terra::time(s[[1]])
+	y$STN=cells$cell[i]
+	y$YEAR=as.integer(format(dates, "%Y"))
+	y$DAY=as.integer(format(dates, "%j"))
+	write_cli_file(cells[i,], y, weather_dir)
 }
 
 

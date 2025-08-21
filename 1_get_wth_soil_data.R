@@ -26,17 +26,21 @@ outpath <- "data/raw/weather/power"
 # resample radiation 
 tmp <- terra::rast(file.path(outpath, "T2M_MIN-1995_2024-91.5x101.5x8x29.nc"))
 rad <- terra::rast(file.path(outpath, "ALLSKY_SFC_SW_DWN-1995_2024-91.5x101.5x8x29.nc"))
-rrad <- terra::resample(rad, tmp)
-terra::writeCDF(rrad, file.path(outpath, "weather/power/radiation-1995_2024-91.5x101.5x8x29.nc"), overwrite=TRUE)
+rrad <- terra::resample(rad, tmp, "average")
+# from (W/m^2) to (kJ/m^2)/day 
+rrad <- round((24 * 3.6) * rrad)
+terra::writeCDF(rrad, file.path(outpath, "radiation-1995_2024-91.5x101.5x8x29.nc"), varname="radiation", longname="radiation", overwrite=TRUE)
 
 # vapor pressure
 dew <- terra::rast(file.path(outpath, "T2MDEW-1995_2024-91.5x101.5x8x29.nc"))
 vap <- 6.112 * exp((17.67 * dew) / (dew + 243.5))
-terra::writeCDF(vap, file.path(outpath, "weather/power/vapr-1995_2024-91.5x101.5x8x29.nc"), varname="VAPR", longname="vapor pressure", overwrite=TRUE)
+#from  hPa to kPa
+vap <- vap / 10
+terra::writeCDF(vap, file.path(outpath, "vapr-1995_2024-91.5x101.5x8x29.nc"), varname="VAPR", longname="vapor pressure", overwrite=TRUE)
 
 
-rain <- terra::rast(file.path(outpath, "weather/power/PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc")) * 86400
-terra::writeCDF(rain, file.path(outpath, "weather/power/rain-1995_2024-91.5x101.5x8x29.nc"), varname="RAIN", longname="precipitation", unit="mm", overwrite=TRUE)
+rain <- terra::rast(file.path(outpath, "PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc")) * 86400
+terra::writeCDF(rain, file.path(outpath, "rain-1995_2024-91.5x101.5x8x29.nc"), varname="RAIN", longname="precipitation", unit="mm", overwrite=TRUE)
 
 ### elevation 
 elv <- geodata::elevation_30s("Myanmar", path="data/raw")
@@ -45,6 +49,7 @@ elv <- terra::resample(elv, dew, "average", filename="data/raw/elevation.tif")
 
 
 ### soil
+elv <- terra::rast("data/raw/elevation.tif")
 ext <- terra::ext(91.5, 101.5,  8, 29)
 vars <- c("bdod", "clay", "nitrogen", "phh2o", "sand", "silt", "soc")
 depths <- c(5, 15, 30)
@@ -52,7 +57,9 @@ soil <- geodata::soil_world(vars, depths, stat="mean", vsi=TRUE)
 soil <- terra::crop(soil, ext, filename="data/raw/soil.tif")
 
 soil <- terra::rast("data/raw/soil.tif")
-soil2 <- terra::resample(soil, elv, "average", filename="data/raw/soil_agg.tif")
+soil[["clay_0-5cm"]] <- 100 - (soil[["sand_0-5cm"]] + soil[["silt_0-5cm"]])
+
+soil2 <- terra::resample(soil, elv, "average", filename="data/raw/soil_agg.tif", overwrite=TRUE)
 
 
 ## cells
