@@ -15,14 +15,13 @@ library(readr)
 library(stringr)
 
 # Extract ORYZA yields from res.dat file
-extract_yields <- function(file_path = "oryza/output/res.dat",
-                           output_path = "data/output/rice_yields_2015_2024.csv") {
+extract_yields <- function(file_path) {
   
   lines <- readLines(file_path, warn = FALSE)
   rerun_lines <- grep("OUTPUT FROM RERUN SET:", lines)
   all_data <- list()
   
-  for(i in seq_along(rerun_lines)) {
+  for (i in seq_along(rerun_lines)) {
     start_idx <- rerun_lines[i]
     end_idx <- if(i < length(rerun_lines)) rerun_lines[i+1] - 1 else length(lines)
     section <- lines[start_idx:end_idx]
@@ -61,35 +60,52 @@ extract_yields <- function(file_path = "oryza/output/res.dat",
                       "LAI","TMIN", "TMAX", "RAIN")
     for(col in numeric_cols) {
       if(col %in% names(df)) {
+	    df[[col]][df[[col]] == "-"] <- NA
         df[[col]] <- as.numeric(df[[col]])
       }
     }
     
-    all_data[[i]] <- df
+    all_data[[i]] <- df[nrow(df), ]
   }
+ 
+  x <- dplyr::bind_rows(all_data)
+	x$id <- gsub("output_|\\.dat", "", basename(file_path))
+
+  return(x)
   
-  # Combine and get final yields
-  combined <- bind_rows(all_data)
-  yields <- combined %>%
-    filter(!is.na(WRR14), WRR14 > 0, !is.na(YEAR), !is.na(WSO)) %>%
-    group_by(Run_ID, YEAR) %>%
-    summarise(
-      Yield_kg_ha = max(WRR14, na.rm = TRUE),
-      Total_Biomass_kg_ha = max(WAGT, na.rm = TRUE),
-      Storage_Organ_kg_ha = max(WSO, na.rm = TRUE),
-      Stem_kg_ha = max(WST, na.rm = TRUE),
-      Max_LAI = max(LAI, na.rm = TRUE),
-      Mean_Tmin = mean(TMIN, na.rm = TRUE),
-      Mean_Tmax = mean(TMAX, na.rm = TRUE),
-      Total_Rain = sum(RAIN, na.rm = TRUE),
-      Harvest_DOY = DOY[which.max(WRR14)],
-      .groups = 'drop'
-    )
-  
-  write_csv(yields, output_path)
-  return(yields)
+  ## Combine and get final yields
+  # combined <- bind_rows(all_data)
+  # yields <- combined %>%
+    # filter(!is.na(WRR14), WRR14 > 0, !is.na(YEAR), !is.na(WSO)) %>%
+    # group_by(Run_ID, YEAR) %>%
+    # summarise(
+      # Yield_kg_ha = max(WRR14, na.rm = TRUE),
+      # Total_Biomass_kg_ha = max(WAGT, na.rm = TRUE),
+      # Storage_Organ_kg_ha = max(WSO, na.rm = TRUE),
+      # Stem_kg_ha = max(WST, na.rm = TRUE),
+      # Max_LAI = max(LAI, na.rm = TRUE),
+      # Mean_Tmin = mean(TMIN, na.rm = TRUE),
+      # Mean_Tmax = mean(TMAX, na.rm = TRUE),
+      # Total_Rain = sum(RAIN, na.rm = TRUE),
+      # Harvest_DOY = DOY[which.max(WRR14)],
+      # .groups = 'drop'
+    # )
+    # return(yields)
 }
 
-# Run extraction
-yields <- extract_yields()
+ff <- list.files("oryza/output", pattern="\\.dat$", full=TRUE)
 
+output <- lapply(ff, extract_yields)
+x <- dplyr::bind_rows(output)
+
+y <- x[, c("id", "YEAR", "WRR14")]
+y$id <- as.integer(gsub("ouput_", "", y$id))
+
+cells <- readRDS("data/cells.rds")
+y$cell <- cells$cell[y$id]
+y$id <- NULL
+
+w <- reshape(y, timevar = "YEAR", idvar = "cell", direction = "wide")
+r <- terra::rast(terra::rast("data/raw/soil_agg.tif"), nlyr=ncol(w)-1)
+r[w$cell] <- w[,-1]
+terra::time(r) <- 2014:2023  
