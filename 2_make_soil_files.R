@@ -87,10 +87,8 @@ write_sol_file <- function(stn_id, soil_row, template_lines, tkl=c(0.05, 0.10, 0
 }
 
 
-
 # Load soil template file (standard.sol)
-template_sol_path <- file.path(path, "data/oryza", "standard.sol")
-template_sol_lines <- readLines(template_sol_path)
+tmp_soil <- readLines(file.path(path, "data/oryza/templates/standard.sol"))
 
 cells <- readRDS("data/cells.rds")
 soil <- terra::rast("data/raw/soil_agg.tif")
@@ -100,6 +98,6 @@ for (i in 1:nrow(cells)) {
 	x <- terra::extract(soil, cells$cell[i])
 	#repair for now
 	x$`clay_0-5cm` = 100 - (x$`silt_0-5cm` + x$`silt_0-5cm`)
-	write_sol_file(cells$cell[i], x, template_sol_lines, tkl=c(0.05, .1, .15), soil_dir)
+	write_sol_file(cells$cell[i], x, tmp_soil, tkl=c(0.05, .1, .15), soil_dir)
 }
 

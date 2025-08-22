@@ -11,7 +11,8 @@ if (this == "LAPTOP-IVSPBGCA") {
 
 dir.create(path, FALSE, TRUE)
 setwd(path)
-outpath <- "data/raw/"
+
+outpath <- "data/raw/weather/power"
 dir.create(outpath, FALSE, TRUE)
 
 vars <- c("ALLSKY_SFC_SW_DWN", "T2M_MIN", "T2M_MAX", "WS2M", "T2MDEW", "PRECTOTCORR")
@@ -22,7 +23,6 @@ for (var in vars) {
 	geodata:::powerWeather(years, var, ext, outpath)
 }
 
-outpath <- "data/raw/weather/power"
 # resample radiation 
 tmp <- terra::rast(file.path(outpath, "T2M_MIN-1995_2024-91.5x101.5x8x29.nc"))
 rad <- terra::rast(file.path(outpath, "ALLSKY_SFC_SW_DWN-1995_2024-91.5x101.5x8x29.nc"))
@@ -43,10 +43,9 @@ rain <- terra::rast(file.path(outpath, "PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc
 terra::writeCDF(rain, file.path(outpath, "rain-1995_2024-91.5x101.5x8x29.nc"), varname="RAIN", longname="precipitation", unit="mm", overwrite=TRUE)
 
 ### elevation 
-elv <- geodata::elevation_30s("Myanmar", path="data/raw")
-elv <- terra::resample(elv, dew, "average", filename="data/raw/elevation.tif")
-
-
+elv <- geodata::elevation_30s("Myanmar", path="data/raw", mask=FALSE)
+elv <- terra::resample(elv, dew, "average")
+elv <- terra::classify(elv, cbind(NA, 1), filename="data/raw/elevation.tif", overwrite=TRUE)
 
 ### soil
 elv <- terra::rast("data/raw/elevation.tif")
@@ -64,11 +63,13 @@ soil2 <- terra::resample(soil, elv, "average", filename="data/raw/soil_agg.tif",
 
 ## cells
 aoi <- geodata::gadm("Myanmar", level=1, path="data/raw")
-r <- rast(elv)
-r <- mask(init(r, "cell"), aoi, touches=TRUE)
+r <- terra::rast(elv)
+r <- terra::mask(init(r, "cell"), aoi, touches=TRUE)
 rice_rast <- geodata::crop_spam(crop="rice", var="area", "data/raw") |> terra::crop(aoi, mask=TRUE)
-rice_rast <- resample(rice_rast[[1]], r, "sum") > 0
-r <- mask(r, rice_rast, maskvalue=FALSE)
+rice_rast <- terra::resample(rice_rast[[1]], r, "sum") > 0
+r <- terra::mask(r, rice_rast, maskvalue=FALSE)
+r <- terra::mask(r, soil2[[1]])
+
 cells <- data.frame(r)[,1]
 
 xy <- data.frame(xyFromCell(r, cells))
