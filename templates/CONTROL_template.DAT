@@ -1,0 +1,44 @@
+CONTROLFILE = '.\CONTROL.DAT'
+STRUN = 1
+ENDRUN = _rrr ! most be >= n reruns
+FILEON = '.\output\_zzz\output_xxx.dat'      ! Output file
+FILEOL = '.\logs\model_xxx.log'    ! Log file
+FILEIR = '.\reruns.rer'      ! Rerun file
+FILEIT = '.\experiment.exp'    ! Experiment file 
+FILEI1 = '.\crops\standard.crp'    ! Crop file 
+FILEI2 = '.\soils\cell_yyy.sol'    ! Soil file
+*----------------------------------------------------------------------*
+* Optionally, Weather Station information can be provided here         * 
+* It is useful for large amount of simulations under same management   *
+*----------------------------------------------------------------------*
+WTRDIR = '.\weather\'   !* Folder name of weather files
+CNTR = 'STN'            !* Weather station name
+ISTN = yyy               !* Weather station number
+MULTIY = 'YES'          !* Whether multiple year weather file is used, 
+                         !* default is 'NO' or if the variable do not appear.
+*----------------------------------------------------------------------*
+* Rice monoculture cropping system                                     *
+* the default for SOILKILL is "YES", soil will be reinitiated every    *
+* crop season, and all processes in soil will also stop as growth stop.*
+* if "NO", soil will only be initiated at the starting date of simulation*
+* and all processes in soil will continue after growth stop.           *
+*----------------------------------------------------------------------*
+*SOILKILL = 'NO'   !* Whether the soil processes continue after crop maturity
+*----------------------------------------------------------------------*
+* Set output/print options                                             *
+*----------------------------------------------------------------------*
+PRDEL = 500. ! Output time step (day), too much reruns, omit detail outputs!
+IPFORM = 9    ! changed from 5
+COPINF = 'N'  ! Switch variable whether to copy the input files to the output    
+              ! file ('N' = do not copy,'Y' = copy)
+DELTMP = 'N'  ! Switch variable what should be done with the temporary output 
+              ! file ('N' = do not delete, 'Y' = delete)
+IFLAG  = 1100 ! Indicates where weather error and warnings go 
+              ! (1101 means errors and warnings to log file, errors to screen
+              ! see FSE manual)
+*PRSEL = 'WAGT','WRR14','WSO'
+*        'LAI', 'LAI_OBS'     !* It is for the output variables in res.dat
+OPSTRING = 'DAE, WRR14, WAGT' !* It is for the output variables in op.dat 
+*IOBSD = 2015,161 
+              !* List of observation data for which output is required.
+              !* The list should consist of pairs <year>,<day> combination
