@@ -13,27 +13,29 @@ setwd(path)
 
 dir.create("oryza/reruns", FALSE, FALSE)
 
-STTIME = seq(3, 365, 7)
-
+STTIME = round(seq(15.4, 365, 30.4167))
 rer <- expand.grid(STTIME=STTIME, IYEAR=2014:2023)
-
-rer$EMYR <- rer$IYEAR 
-
+rer <- sapply(rer, as.character)
 rer <- data.frame(rerun=1:nrow(rer), rer)
 
-#soil_path <- "..\\oryza\\soils\\cell_%03d.sol"
-cells <- readRDS("data/cells.rds")
-stations <- cells$cell
+rer$EMD <- as.integer(rer$STTIME) + 7
+rer$EMYR <- rer$IYEAR 
+rer$STTIME = paste0(rer$STTIME, ".")
+
+rerun_file <- "oryza/reruns.rer"
+x <- lapply(1:nrow(rer), \(i) paste0(names(rer), "=", rer[i,])) |> unlist()
+x <- gsub("^rerun", "\n*rerun", x)
+writeLines(x, rerun_file)
 
 
-# Add one rerun configuration per station
-for (i in 1:length(stations)) {
-	rerun_file <- paste0("oryza/reruns/run_", i, ".rer")
-#	rer$fILEI2 <- sprintf("'%s'", sprintf(soil_path, stations[i]))
-	rer$ISTN <- stations[i]
-	x <- lapply(1:nrow(rer), \(i) paste0(names(rer), "=", rer[i,])) |> unlist()
-	x <- gsub("^rerun", "\n*rerun", x)
-	writeLines(x, rerun_file)
-}
+
+#cells <- readRDS("data/cells.rds")
+#for (i in 1:length(stations)) {
+#	rerun_file <- paste0("oryza/reruns/run_", i, ".rer")
+#	rer$ISTN <- stations[i]
+#	x <- lapply(1:nrow(rer), \(i) paste0(names(rer), "=", rer[i,])) |> unlist()
+#	x <- gsub("^rerun", "\n*rerun", x)
+#	writeLines(x, rerun_file)
+#}
 
 			

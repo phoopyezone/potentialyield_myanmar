@@ -10,102 +10,138 @@ setwd(path)
 
 dir.create("data/output", FALSE, FALSE)
 
-library(dplyr)
-library(readr)
-library(stringr)
 
-# Extract ORYZA yields from res.dat file
-extract_yields <- function(file_path) {
+# Extract ORYZA yields from res.dat file created with IPFORM=5
+extract_5 <- function(file_path) {
+
+	#print(file_path); flush.console()
   
   lines <- readLines(file_path, warn = FALSE)
-  rerun_lines <- grep("OUTPUT FROM RERUN SET:", lines)
-  all_data <- list()
-  
-  for (i in seq_along(rerun_lines)) {
-    start_idx <- rerun_lines[i]
-    end_idx <- if(i < length(rerun_lines)) rerun_lines[i+1] - 1 else length(lines)
-    section <- lines[start_idx:end_idx]
+  start_idx <- grep("OUTPUT FROM RERUN SET:", lines)
+  end_idx <- c(start_idx[-1], length(lines))
+
+  all_data <- vector("list", length(start_idx))
+ 
+  for (i in seq_along(start_idx)) {
+    section <- lines[start_idx[i]:end_idx[i]]
     
     # Get run ID
     run_line <- section[grep("OUTPUT FROM RERUN SET:", section)]
-    run_id <- str_split(run_line, "\\s+")[[1]]
-    run_id <- as.numeric(run_id[length(run_id)])
-    
+    #run_id <- stringr::str_split(run_line, "\\s+")[[1]]
+    #run_id <- as.numeric(run_id[length(run_id)])
+	
     # Find data
     header_idx <- grep("^TIME\\s+", section)
-    if(length(header_idx) == 0) next
+
+	## this could break things.
+    if (length(header_idx) == 0) next
     
-    headers <- str_split(str_squish(section[header_idx[1]]), "\\s+")[[1]]
+    headers <- stringr::str_split(stringr::str_squish(section[header_idx[1]]), "\\s+")[[1]]
     data_lines <- section[(header_idx[1] + 1):length(section)]
-    data_lines <- data_lines[str_detect(data_lines, "^\\s*\\d")]
+    data_lines <- data_lines[stringr::str_detect(data_lines, "^\\s*\\d")]
     
-    if(length(data_lines) == 0) next
+	## this would break things.
+    #if (length(data_lines) == 0) next
     
     # Parse data
-    parsed_data <- list()
-    for(j in seq_along(data_lines)) {
-      vals <- str_split(str_squish(data_lines[j]), "\\s+")[[1]]
-      if(length(vals) >= length(headers)) {
+    parsed_data <- vector("list", length(data_lines))
+    for (j in seq_along(data_lines)) {
+      vals <- stringr::str_split(stringr::str_squish(data_lines[j]), "\\s+")[[1]]
+      if (length(vals) >= length(headers)) {
         parsed_data[[j]] <- setNames(vals[1:length(headers)], headers)
       }
     }
     
-    if(length(parsed_data) == 0) next
+	## this would break things.
+    #if (length(parsed_data) == 0) next
     
     df <- data.frame(do.call(rbind, parsed_data), stringsAsFactors = FALSE)
-    df$Run_ID <- run_id
-    
+    df[df == "-"] <- NA
+    #df$Run_ID <- run_id
+    df$run_ID <- i
+	
     # Convert to numeric
-    numeric_cols <- c("TIME", "YEAR", "DOY", "WRR14", "WAGT", "WSO", "WST", 
-                      "LAI","TMIN", "TMAX", "RAIN")
-    for(col in numeric_cols) {
-      if(col %in% names(df)) {
-	    df[[col]][df[[col]] == "-"] <- NA
-        df[[col]] <- as.numeric(df[[col]])
-      }
-    }
+    num_cols <- c("TIME", "YEAR", "DOY", "WRR14", "WAGT", "WSO", "WST", "LAI", "TMIN", "TMAX", "RAIN")
+	df[num_cols] <- sapply(df[num_cols], as.numeric)
     
-    all_data[[i]] <- df[nrow(df), ]
+    all_data[[i]] <- df
   }
  
-  x <- dplyr::bind_rows(all_data)
-	x$id <- gsub("output_|\\.dat", "", basename(file_path))
-
-  return(x)
-  
-  ## Combine and get final yields
-  # combined <- bind_rows(all_data)
-  # yields <- combined %>%
-    # filter(!is.na(WRR14), WRR14 > 0, !is.na(YEAR), !is.na(WSO)) %>%
-    # group_by(Run_ID, YEAR) %>%
-    # summarise(
-      # Yield_kg_ha = max(WRR14, na.rm = TRUE),
-      # Total_Biomass_kg_ha = max(WAGT, na.rm = TRUE),
-      # Storage_Organ_kg_ha = max(WSO, na.rm = TRUE),
-      # Stem_kg_ha = max(WST, na.rm = TRUE),
-      # Max_LAI = max(LAI, na.rm = TRUE),
-      # Mean_Tmin = mean(TMIN, na.rm = TRUE),
-      # Mean_Tmax = mean(TMAX, na.rm = TRUE),
-      # Total_Rain = sum(RAIN, na.rm = TRUE),
-      # Harvest_DOY = DOY[which.max(WRR14)],
-      # .groups = 'drop'
-    # )
-    # return(yields)
+  combined <- dplyr::bind_rows(all_data)
+  out <- combined |>
+    dplyr::group_by(run_ID) |>
+    dplyr::summarise(
+	  sYEAR = YEAR[1],
+	  sDOY = DOY[1],
+	  eYEAR = YEAR[which.max(WRR14)],
+      eDOY = DOY[which.max(WRR14)],
+      WRR14 = max(WRR14, na.rm = TRUE),
+      WAGT = max(WAGT, na.rm = TRUE),
+      WSO = max(WSO, na.rm = TRUE),
+      WST = max(WST, na.rm = TRUE),
+      LAI = max(LAI, na.rm = TRUE),
+      TMIN = mean(TMIN, na.rm = TRUE),
+      TMAX = mean(TMAX, na.rm = TRUE),
+      RAIN = sum(RAIN, na.rm = TRUE),
+      .groups = 'drop'
+    )
+	out$cell_ID <- gsub("output_|\\.dat", "", basename(file_path))
+	out
 }
 
-ff <- list.files("oryza/output", pattern="\\.dat$", full=TRUE)
 
-output <- lapply(ff, extract_yields)
-x <- dplyr::bind_rows(output)
+# Extract ORYZA yields from res.dat file created with IPFORM=9
+extract_9 <- function(filename) {
+  x <- readLines(filename, warn = FALSE)
+  x <- x[!grepl("*", x, fixed=TRUE)]
+  x <- x[grep(",", x, fixed=TRUE)]
+  x <- strsplit(x, ",")
+  x <- do.call(rbind, x)
+  nms <- x[1,]
+  x <- x[-1,]
+  x[x=="-"] <- NA
+  x <- matrix(as.numeric(x), nrow=nrow(x), ncol=ncol(x))
+  colnames(x) <- nms
+  i <- rep(1:2, nrow(x)/2) 
+  starts <- x[i==1, c("YEAR", "DOY")]
+  colnames(starts) <- c("sYEAR", "sDOY")
+  starts <- data.frame(starts, x[i==2, ])
+  starts$cell_ID <- gsub("output_|\\.dat", "", basename(filename))
+  starts
+}
 
-y <- x[, c("id", "YEAR", "WRR14")]
-y$id <- as.integer(gsub("ouput_", "", y$id))
+ff <- list.files("oryza/output/test", pattern="\\.dat$", full=TRUE)
 
+output <- lapply(ff, function(f) {
+		e <- try(extract_9(f))
+		if (inherits(e, "try-error")) {
+			print(f); flush.console()
+			NULL
+		} else {
+			e
+		}
+	})
+	
+
+#x <- dplyr::bind_rows(output)
+x <- do.call(rbind, output)
 cells <- readRDS("data/cells.rds")
-y$cell <- cells$cell[y$id]
-y$id <- NULL
+x$cell <- cells$cell[as.integer(x$cell_ID)]
+x$cell_ID <- NULL
+x$start_date <- meteor::fromDoy(x$sDOY, x$sYEAR)
 
-w <- reshape(y, timevar = "YEAR", idvar = "cell", direction = "wide")
+write.csv(x, "data/output/test.csv", row.names=FALSE)
+
+y <- x[, c("cell", "start_date", "WRR14")]
+
+w <- reshape(y, timevar = "start_date", idvar = "cell", direction = "wide")
 r <- terra::rast(terra::rast("data/raw/soil_agg.tif"), nlyr=ncol(w)-1)
+
 r[w$cell] <- w[,-1]
-terra::time(r) <- 2014:2023  
+terra::time(r) <- as.Date(gsub("WRR14.", "", names(w)[-1]))
+
+terra::writeRaster(r, "data/output/test.tif")
+
+x <- terra::mean(r, na.rm=TRUE)
+terra::plot(x)
+	
