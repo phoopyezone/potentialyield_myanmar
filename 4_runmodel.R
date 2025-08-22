@@ -15,12 +15,17 @@ runname <- "test"
 dir.create(file.path("output", runname))
 
 
-cntr <- readLines("templates/CONTROL_template.DAT")
-expr <- readLines("templates/experiment_template.exp")
+cntr <- readLines("templates/CONTROL_template.txt")
+expr <- readLines("templates/experiment_template.txt")
 rrun <- readLines("reruns.rer")
+
+ff <- c("templates/CONTROL_template.txt", "templates/experiment_template.txt", "reruns.rer")
+file.copy(ff, file.path("output", runname, basename(ff)), overwrite=FALSE)
+
 nrun <- max(30, sum(grepl("rerun", rrun)))
 
 fcrpX <- "crops/standard.crpX"
+fexpX <- "experiment.expX"
  
 options(warn=2)
 for (i in 1:nrow(cells)) {
@@ -35,11 +40,10 @@ for (i in 1:nrow(cells)) {
 		z <- gsub("_yyy", cells$cell[i], expr)
 		writeLines(z, "experiment.exp")
 
-		if (file.exists(fcrpX)) {
-			Sys.sleep(1)
-			file.remove(fcrpX)
-		}
-		system("ORYZA3.exe", intern=TRUE)
+		for (f in c(fcrpX, fexpX)) { if (file.exists(f)) {Sys.sleep(1); file.remove(f)} }
+
+		try(system("ORYZA3.exe", intern=TRUE))
+		Sys.sleep(1)
 	}
 }
 options(warn=0)
