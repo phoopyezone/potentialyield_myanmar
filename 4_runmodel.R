@@ -30,7 +30,7 @@ fexpX <- "experiment.expX"
 options(warn=2)
 for (i in 1:nrow(cells)) {
 	fout <- paste0(file.path("output", runname), "/output_", i, ".dat")
-	if (!file.exists(fout)) {	
+	if ((!file.exists(fout)) || (file.info(fout)$size == 0)) {	
 		print(paste0("run ", i, ", cell ", cells$cell[i])); flush.console()
 		y <- gsub("_xxx", paste0("_", i), cntr)
 		y <- gsub("yyy", cells$cell[i], y)
