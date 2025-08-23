@@ -26,6 +26,7 @@ nrun <- max(30, sum(grepl("rerun", rrun)))
 
 fcrpX <- "crops/standard.crpX"
 fexpX <- "experiment.expX"
+fsolX <- "soils/cell_yyy.solX"
  
 options(warn=2)
 for (i in 1:nrow(cells)) {
@@ -39,8 +40,8 @@ for (i in 1:nrow(cells)) {
 		writeLines(y, "CONTROL.DAT")
 		z <- gsub("_yyy", cells$cell[i], expr)
 		writeLines(z, "experiment.exp")
-
-		for (f in c(fcrpX, fexpX)) { if (file.exists(f)) {Sys.sleep(1); file.remove(f)} }
+		fsx <- gsub("yyy", cells$cell[i], fsolX)
+		for (f in c(fcrpX, fexpX, fsx)) { if (file.exists(f)) {Sys.sleep(1); file.remove(f)} }
 
 		try(system("ORYZA3.exe", intern=TRUE))
 		Sys.sleep(1)

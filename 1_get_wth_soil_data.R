@@ -39,8 +39,9 @@ vap <- vap / 10
 terra::writeCDF(vap, file.path(outpath, "vapr-1995_2024-91.5x101.5x8x29.nc"), varname="VAPR", longname="vapor pressure", overwrite=TRUE)
 
 
-rain <- terra::rast(file.path(outpath, "PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc")) * 86400
-terra::writeCDF(rain, file.path(outpath, "rain-1995_2024-91.5x101.5x8x29.nc"), varname="RAIN", longname="precipitation", unit="mm", overwrite=TRUE)
+#rain <- terra::rast(file.path(outpath, "PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc"))
+## is in mm (but seems low)
+##terra::writeCDF(rain, file.path(outpath, "rain-1995_2024-91.5x101.5x8x29.nc"), varname="RAIN", longname="precipitation", unit="mm", overwrite=TRUE)
 
 ### elevation 
 elv <- geodata::elevation_30s("Myanmar", path="data/raw", mask=FALSE)
