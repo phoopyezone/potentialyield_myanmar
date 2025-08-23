@@ -80,9 +80,9 @@ extract_5 <- function(file_path) {
       WSO = max(WSO, na.rm = TRUE),
       WST = max(WST, na.rm = TRUE),
       LAI = max(LAI, na.rm = TRUE),
-      TMIN = mean(TMIN, na.rm = TRUE),
-      TMAX = mean(TMAX, na.rm = TRUE),
-      RAIN = sum(RAIN, na.rm = TRUE),
+      #TMIN = mean(TMIN, na.rm = TRUE),
+      #TMAX = mean(TMAX, na.rm = TRUE),
+      #RAIN = sum(RAIN, na.rm = TRUE),
       .groups = 'drop'
     )
 	out$cell_ID <- gsub("output_|\\.dat", "", basename(file_path))
@@ -111,6 +111,12 @@ extract_9 <- function(filename) {
   starts
 }
 
+# Extract ORYZA op.dat
+extract_op <- function(filename) {
+
+}
+
+
 ff <- list.files("oryza/output/test", pattern="\\.dat$", full=TRUE)
 
 output <- lapply(ff, function(f) {
@@ -130,6 +136,7 @@ cells <- readRDS("data/cells.rds")
 x$cell <- cells$cell[as.integer(x$cell_ID)]
 x$cell_ID <- NULL
 x$start_date <- meteor::fromDoy(x$sDOY, x$sYEAR)
+x <- data.frame(x)
 
 write.csv(x, "data/output/test.csv", row.names=FALSE)
 

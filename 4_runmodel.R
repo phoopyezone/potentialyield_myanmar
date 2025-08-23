@@ -11,15 +11,19 @@ dir.create("logs", FALSE, FALSE)
 
 cells <- readRDS("../data/cells.rds")
 
-runname <- "test"
+runname <- "potential"
+
 dir.create(file.path("output", runname))
 
 
 cntr <- readLines("templates/CONTROL_template.txt")
+#cntr <- gsub("standard.crp", "Mestizo.crp", cntr)
+
 expr <- readLines("templates/experiment_template.txt")
 rrun <- readLines("reruns.rer")
 
 ff <- c("templates/CONTROL_template.txt", "templates/experiment_template.txt", "reruns.rer")
+
 file.copy(ff, file.path("output", runname, basename(ff)), overwrite=FALSE)
 
 nrun <- max(30, sum(grepl("rerun", rrun)))
@@ -38,13 +42,17 @@ for (i in 1:nrow(cells)) {
 		y <- gsub("_zzz", runname, y)
 		y <- gsub("_rrr", nrun, y)
 		writeLines(y, "CONTROL.DAT")
+
 		z <- gsub("_yyy", cells$cell[i], expr)
 		writeLines(z, "experiment.exp")
+		
 		fsx <- gsub("yyy", cells$cell[i], fsolX)
 		for (f in c(fcrpX, fexpX, fsx)) { if (file.exists(f)) {Sys.sleep(1); file.remove(f)} }
 
 		try(system("ORYZA3.exe", intern=TRUE))
 		Sys.sleep(1)
+		fop <- paste0(file.path("output", runname), "/op_", i, ".val")
+		file.copy("op.dat", fop)
 	}
 }
 options(warn=0)
