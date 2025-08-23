@@ -15,14 +15,16 @@ runname <- "potential"
 
 dir.create(file.path("output", runname))
 
+fexp <- "templates/experiment_template.txt"
+fcntr <- "templates/CONTROL_template.txt"
 
-cntr <- readLines("templates/CONTROL_template.txt")
+cntr <- readLines(fcntr)
 #cntr <- gsub("standard.crp", "Mestizo.crp", cntr)
 
-expr <- readLines("templates/experiment_template.txt")
+expr <- readLines(fexp)
 rrun <- readLines("reruns.rer")
 
-ff <- c("templates/CONTROL_template.txt", "templates/experiment_template.txt", "reruns.rer")
+ff <- c(fcntr, fexp, "reruns.rer")
 
 file.copy(ff, file.path("output", runname, basename(ff)), overwrite=FALSE)
 
