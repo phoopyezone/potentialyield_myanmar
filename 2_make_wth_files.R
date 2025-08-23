@@ -77,7 +77,7 @@ write_cli_file <- function(id, wdata, out_path) {
 
 aoi <- geodata::gadm("Myanmar", level=1, path="data/raw")
 
-vars <- c("radiation", "T2M_MIN", "T2M_MAX", "vapr", "WS2M", "rain")
+vars <- c("radiation", "T2M_MIN", "T2M_MAX", "vapr", "WS2M", "PRECTOTCORR")
 fnames <- paste0("data/raw/weather/power/", vars, "-1995_2024-91.5x101.5x8x29.nc")
 s <- terra::sds(fnames)
 cells <- readRDS("data/cells.rds")

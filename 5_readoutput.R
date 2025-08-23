@@ -96,6 +96,7 @@ extract_9 <- function(filename) {
   x <- x[!grepl("*", x, fixed=TRUE)]
   x <- x[grep(",", x, fixed=TRUE)]
   x <- strsplit(x, ",")
+  x <- lapply(x, \(i) if (length(i) == 41) c(i, "") else i)
   x <- do.call(rbind, x)
   nms <- x[1,]
   x <- x[-1,]
@@ -113,7 +114,7 @@ extract_9 <- function(filename) {
 ff <- list.files("oryza/output/test", pattern="\\.dat$", full=TRUE)
 
 output <- lapply(ff, function(f) {
-		e <- try(extract_9(f))
+		e <- try(extract_5(f))
 		if (inherits(e, "try-error")) {
 			print(f); flush.console()
 			NULL
