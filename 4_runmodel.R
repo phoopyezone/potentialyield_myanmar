@@ -5,38 +5,38 @@ if (this == "LAPTOP-IVSPBGCA") {
 } else {
 	path <- "C:/1_Research/yield_gap/v2"
 }
+
+#### change
+runname <- "test"
+
+
+#### do not change
 setwd(file.path(path, "oryza"))
 dir.create("output", FALSE, FALSE)
-dir.create("logs", FALSE, FALSE)
-
+dir.create(file.path("output", runname))
+s <- sapply(c("control", "logs", "op", "dat"), \(d) dir.create(file.path("output", runname, d), FALSE))
+fexp <- "control/templates/experiment_template.txt"
+fcntr <- "control/templates/CONTROL_template.txt"
+frer <- "control/reruns.rer"
+cntr <- readLines(fcntr)
+expr <- readLines(fexp)
+rrun <- readLines(frer)
 cells <- readRDS("../data/cells.rds")
 
-runname <- "potential"
+ff <- c(fcntr, fexp, frer)
+file.copy(ff, file.path("output", runname, "control", basename(ff)), overwrite=FALSE)
+nrun <- max(12, sum(grepl("rerun", rrun)))
+fX <- c("control/crops/standard.crpX", "control/experiment.expX")
+fsolX <- "input/soils/cell_yyy.solX"
+#### 
 
-dir.create(file.path("output", runname))
-
-fexp <- "templates/experiment_template.txt"
-fcntr <- "templates/CONTROL_template.txt"
-
-cntr <- readLines(fcntr)
+#### change
 #cntr <- gsub("standard.crp", "Mestizo.crp", cntr)
 
-expr <- readLines(fexp)
-rrun <- readLines("reruns.rer")
 
-ff <- c(fcntr, fexp, "reruns.rer")
-
-file.copy(ff, file.path("output", runname, basename(ff)), overwrite=FALSE)
-
-nrun <- max(30, sum(grepl("rerun", rrun)))
-
-fcrpX <- "crops/standard.crpX"
-fexpX <- "experiment.expX"
-fsolX <- "soils/cell_yyy.solX"
- 
 options(warn=2)
 for (i in 1:nrow(cells)) {
-	fout <- paste0(file.path("output", runname), "/output_", i, ".dat")
+	fout <- paste0(file.path("output", runname, "dat"), "/output_", i, ".dat")
 	if ((!file.exists(fout)) || (file.info(fout)$size == 0)) {	
 		print(paste0("run ", i, ", cell ", cells$cell[i])); flush.console()
 		y <- gsub("_xxx", paste0("_", i), cntr)
@@ -49,11 +49,12 @@ for (i in 1:nrow(cells)) {
 		writeLines(z, "experiment.exp")
 		
 		fsx <- gsub("yyy", cells$cell[i], fsolX)
-		for (f in c(fcrpX, fexpX, fsx)) { if (file.exists(f)) {Sys.sleep(1); file.remove(f)} }
+		for (f in c(fX, fsx)) { if (file.exists(f)) {Sys.sleep(1); file.remove(f)} }
 
 		try(system("ORYZA3.exe", intern=TRUE))
 		Sys.sleep(1)
-		fop <- paste0(file.path("output", runname), "/op_", i, ".val")
+		fop <- file.path("output", runname, "op", paste0("op_", i, ".val"))
+		if (file.exists(fop)) file.remove(fop); 
 		file.copy("op.dat", fop)
 	}
 }

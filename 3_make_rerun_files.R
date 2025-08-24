@@ -14,6 +14,7 @@ setwd(path)
 dir.create("oryza/reruns", FALSE, FALSE)
 
 STTIME = round(seq(15.4, 365, 30.4167))
+
 rer <- expand.grid(STTIME=STTIME, IYEAR=2014:2023)
 #rer <- expand.grid(STTIME=STTIME, IYEAR=2014)
 rer <- sapply(rer, as.character)
