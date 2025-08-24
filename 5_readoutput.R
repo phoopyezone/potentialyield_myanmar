@@ -8,7 +8,6 @@ if (this == "LAPTOP-IVSPBGCA") {
 }
 setwd(path)
 
-dir.create("data/output", FALSE, FALSE)
 
 
 # Extract ORYZA yields from res.dat file created with IPFORM=5
@@ -113,11 +112,19 @@ extract_9 <- function(filename) {
 
 # Extract ORYZA op.dat
 extract_op <- function(filename) {
-
+	x <- trimws(readLines(filename))
+	y <- strsplit(x, "\\s+")
+	z <- do.call(rbind, y)
+	cns <- z[1,]
+	z <- z[-1,]
+	z <- matrix(as.numeric(z), nrow=nrow(z), ncol=ncol(z))
+	colnames(z) <- cns
+	data.frame(file=basename(filename), z)
 }
 
 
-ff <- list.files("oryza/output/test", pattern="\\.dat$", full=TRUE)
+
+ff <- list.files("oryza/output/test/dat", pattern="\\.dat$", full=TRUE)
 
 output <- lapply(ff, function(f) {
 		e <- try(extract_5(f))
@@ -148,8 +155,8 @@ r <- terra::rast(terra::rast("data/raw/soil_agg.tif"), nlyr=ncol(w)-1)
 r[w$cell] <- w[,-1]
 terra::time(r) <- as.Date(gsub("WRR14.", "", names(w)[-1]))
 
-terra::writeRaster(r, "data/output/test.tif")
+terra::writeRaster(r, "data/output/test.tif", overwrite=TRUE)
 
-x <- terra::mean(r, na.rm=TRUE)
-terra::plot(x)
+x <- terra::tapp(r, "years", max, na.rm=TRUE)
+terra::plot(terra::mean(x))
 	
