@@ -5,8 +5,11 @@
 this <- system('hostname', TRUE)
 if (this == "LAPTOP-IVSPBGCA") {
 	path <- "H:/.shortcut-targets-by-id/12UEUrVBpKKmwv8Ub1xsstTrrhZoIn_1A/simulation_data/v2"
+} else if (this == "phoopyezone") {
+  path <- "G:/My Drive/simulation_data/v2"
+  #path <- "C:/1_Research/yield_gap/v2"
 } else {
-	path <- "C:/1_Research/yield_gap/v2"
+  path <- "."
 }
 
 dir.create(path, FALSE, TRUE)
@@ -20,7 +23,7 @@ years <- 1995:2024
 ext <- terra::ext(91.5, 101.5,  8, 29)
 
 for (var in vars) {
-	geodata:::powerWeather(years, var, ext, outpath)
+	geodata:::.powerWeather(years, var, ext, path=outpath)
 }
 
 # resample radiation 
