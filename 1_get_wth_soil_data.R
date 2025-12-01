@@ -15,7 +15,7 @@ if (this == "LAPTOP-IVSPBGCA") {
 dir.create(path, FALSE, TRUE)
 setwd(path)
 
-outpath <- "data/raw/weather/power"
+outpath <- "data/raw"
 dir.create(outpath, FALSE, TRUE)
 
 vars <- c("ALLSKY_SFC_SW_DWN", "T2M_MIN", "T2M_MAX", "WS2M", "T2MDEW", "PRECTOTCORR")
@@ -27,19 +27,20 @@ for (var in vars) {
 }
 
 # resample radiation 
-tmp <- terra::rast(file.path(outpath, "T2M_MIN-1995_2024-91.5x101.5x8x29.nc"))
-rad <- terra::rast(file.path(outpath, "ALLSKY_SFC_SW_DWN-1995_2024-91.5x101.5x8x29.nc"))
+wpath <- file.path(outpath, "weather/power")
+tmp <- terra::rast(file.path(wpath, "T2M_MIN-1995_2024-91.5x101.5x8x29.nc"))
+rad <- terra::rast(file.path(wpath, "ALLSKY_SFC_SW_DWN-1995_2024-91.5x101.5x8x29.nc"))
 rrad <- terra::resample(rad, tmp, "average")
 # from (W/m^2) to (kJ/m^2)/day 
 rrad <- round((24 * 3.6) * rrad)
-terra::writeCDF(rrad, file.path(outpath, "radiation-1995_2024-91.5x101.5x8x29.nc"), varname="radiation", longname="radiation", overwrite=TRUE)
+terra::writeCDF(rrad, file.path(wpath, "radiation-1995_2024-91.5x101.5x8x29.nc"), varname="radiation", longname="radiation", overwrite=TRUE)
 
 # vapor pressure
-dew <- terra::rast(file.path(outpath, "T2MDEW-1995_2024-91.5x101.5x8x29.nc"))
+dew <- terra::rast(file.path(wpath, "T2MDEW-1995_2024-91.5x101.5x8x29.nc"))
 vap <- 6.112 * exp((17.67 * dew) / (dew + 243.5))
 #from  hPa to kPa
 vap <- vap / 10
-terra::writeCDF(vap, file.path(outpath, "vapr-1995_2024-91.5x101.5x8x29.nc"), varname="VAPR", longname="vapor pressure", overwrite=TRUE)
+terra::writeCDF(vap, file.path(wpath, "vapr-1995_2024-91.5x101.5x8x29.nc"), varname="VAPR", longname="vapor pressure", overwrite=TRUE)
 
 
 #rain <- terra::rast(file.path(outpath, "PRECTOTCORR-1995_2024-91.5x101.5x8x29.nc"))
